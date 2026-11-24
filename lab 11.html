@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Learning</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .app {
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+
+        .card {
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 50px 20px;
+            margin: 20px 0;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .card-correct {
+            border-color: green;
+        }
+
+        .card-wrong {
+            border-color: red;
+        }
+
+        .nav {
+            margin: 15px 0;
+            font-weight: bold;
+        }
+
+        .nav button {
+            padding: 4px 10px;
+            margin: 0 8px;
+            cursor: pointer;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            font-size: 16px;
+            width: 220px;
+            text-align: center;
+        }
+
+        .error {
+            color: red;
+            font-size: 14px;
+            margin-top: 6px;
+            min-height: 18px;
+        }
+
+        .stats {
+            margin-top: 15px;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 8px;
+            font-weight: bold;
+        }
+
+        .correct {
+            color: green;
+        }
+
+        .wrong {
+            color: red;
+        }
+
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+        }
+
+        .modal-box {
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            max-width: 340px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .modal-box button {
+            margin-top: 15px;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                margin: 10px;
+            }
+
+            .card {
+                padding: 35px 15px;
+                font-size: 20px;
+            }
+
+            input[type="text"] {
+                width: 100%;
+            }
+        }
+    </style>
+    <script>
+        $(function () {
+            const dictionary = [
+                { en: "always", uk: "завжди" },
+                { en: "knowledge", uk: "знання" },
+                { en: "language", uk: "мова" },
+                { en: "purpose", uk: "мета" },
+                { en: "experience", uk: "досвід" },
+                { en: "solution", uk: "рішення" },
+                { en: "success", uk: "успіх" },
+                { en: "improve", uk: "покращувати" },
+                { en: "environment", uk: "середовище" },
+                { en: "opportunity", uk: "можливість" }
+            ];
+
+            let cards = [];
+            let currentStep = 0;
+            let correctCount = 0;
+            let wrongCount = 0;
+
+            function shuffleArray(items) {
+                let list = items.slice();
+                for (let idx = list.length - 1; idx > 0; idx--) {
+                    let randIdx = Math.floor(Math.random() * (idx + 1));
+                    let temp = list[idx];
+                    list[idx] = list[randIdx];
+                    list[randIdx] = temp;
+                }
+                return list;
+            }
+
+            function startTest() {
+                cards = shuffleArray(dictionary).map(function (entry) {
+                    return {
+                        en: entry.en,
+                        uk: entry.uk,
+                        checked: false,
+                        isRight: null,
+                        answer: ""
+                    };
+                });
+
+                currentStep = 0;
+                correctCount = 0;
+                wrongCount = 0;
+
+                $("#correct-val").text(correctCount);
+                $("#wrong-val").text(wrongCount);
+                $("#level-modal").css("display", "none");
+
+                showCard();
+            }
+
+            function showCard() {
+                let item = cards[currentStep];
+
+                $("#word-card").removeClass("card-correct card-wrong");
+                $("#error-box").text("");
+                $("#word-card").text(item.en);
+                $("#step-label").text((currentStep + 1) + "/" + cards.length);
+
+                if (currentStep === 0) {
+                    $("#prev-step").attr("disabled", "disabled");
+                } else {
+                    $("#prev-step").removeAttr("disabled");
+                }
+
+                if (currentStep === cards.length - 1) {
+                    $("#next-step").attr("disabled", "disabled");
+                } else {
+                    $("#next-step").removeAttr("disabled");
+                }
+
+                if (item.checked) {
+                    $("#answer-input").val(item.answer).attr("disabled", "disabled");
+                    $("#word-card").addClass(item.isRight ? "card-correct" : "card-wrong");
+                } else {
+                    $("#answer-input").val("").removeAttr("disabled").focus();
+                }
+            }
+
+            function validateInput(text) {
+                if (text === "") {
+                    return "Введіть переклад";
+                }
+                let ukrRegex = /^[а-яА-ЯіІїЇєЄґҐ'\s-]+$/;
+                if (!ukrRegex.test(text)) {
+                    return "Переклад має бути українською";
+                }
+                return "";
+            }
+
+            function getLevel(score, total) {
+                let percent = (score / total) * 100;
+                if (percent >= 90) {
+                    return "Високий (C1)";
+                }
+                if (percent >= 70) {
+                    return "Вище середнього (B2)";
+                }
+                if (percent >= 50) {
+                    return "Середній (B1)";
+                }
+                return "Початковий (A1–A2)";
+            }
+
+            function checkCard() {
+                let item = cards[currentStep];
+                if (item.checked) {
+                    return;
+                }
+
+                let userInput = $("#answer-input").val().trim();
+                let validationError = validateInput(userInput);
+                if (validationError !== "") {
+                    $("#error-box").text(validationError);
+                    return;
+                }
+
+                item.checked = true;
+                item.answer = userInput;
+
+                if (userInput.toLowerCase() === item.uk.toLowerCase()) {
+                    item.isRight = true;
+                    correctCount++;
+                    $("#correct-val").text(correctCount);
+                    $("#word-card").addClass("card-correct");
+                } else {
+                    item.isRight = false;
+                    wrongCount++;
+                    $("#wrong-val").text(wrongCount);
+                    $("#word-card").addClass("card-wrong");
+                }
+
+                $("#answer-input").attr("disabled", "disabled");
+
+                let finished = cards.every(function (entry) {
+                    return entry.checked;
+                });
+
+                if (finished) {
+                    $("#level-text").text("Рівень знань: " + getLevel(correctCount, cards.length));
+                    $("#score-text").text("Вірно: " + correctCount + " з " + cards.length);
+                    $("#level-modal").css("display", "flex");
+                }
+            }
+
+            $("#word-card").on("click", checkCard);
+
+            $("#prev-step").on("click", function () {
+                if (currentStep > 0) {
+                    currentStep--;
+                    showCard();
+                }
+            });
+
+            $("#next-step").on("click", function () {
+                if (currentStep < cards.length - 1) {
+                    currentStep++;
+                    showCard();
+                }
+            });
+
+            $("#answer-input").on("keydown", function (event) {
+                if (event.keyCode === 13) {
+                    checkCard();
+                }
+            });
+
+            $("#restart-modal").on("click", startTest);
+
+            startTest();
+        });
+    </script>
+</head>
+<body>
+
+    <div class="app">
+        <div id="word-card" class="card"></div>
+
+        <div class="nav">
+            <button id="prev-step">&larr;</button>
+            <span id="step-label">1/10</span>
+            <button id="next-step">&rarr;</button>
+        </div>
+
+        <div>
+            <input type="text" id="answer-input" autocomplete="off">
+            <div id="error-box" class="error"></div>
+        </div>
+
+        <div class="stats">
+            <div><strong>Статистика</strong></div>
+            <div class="stats-row">
+                <div class="correct">
+                    <div>Вірно</div>
+                    <div id="correct-val">0</div>
+                </div>
+                <div class="wrong">
+                    <div>Невірно</div>
+                    <div id="wrong-val">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="level-modal" class="modal-backdrop">
+        <div class="modal-box">
+            <h3 id="level-text"></h3>
+            <p id="score-text"></p>
+            <button id="restart-modal">Ще раз</button>
+        </div>
+    </div>
+
+</body>
+</html>
